@@ -1,0 +1,7 @@
+{
+  "size": 512,
+  "min": -32,
+  "span": 64,
+  "segments": 24,
+  "source_sha256": "0d46777b5ffd03ad9e888d538ad8982788e79eddaaf148204102391e7f1ae099"
+}

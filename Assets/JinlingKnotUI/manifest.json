@@ -1,0 +1,171 @@
+[
+  {
+    "name": "Background_Tiles",
+    "file": "Components/Background_Tiles.png",
+    "width": 1672,
+    "height": 941,
+    "bounds": [
+      0,
+      0,
+      1672,
+      941
+    ],
+    "alpha": false
+  },
+  {
+    "name": "Button_Demo",
+    "file": "Components/Button_Demo.png",
+    "width": 2172,
+    "height": 724,
+    "bounds": [
+      57,
+      140,
+      2119,
+      589
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Button_Exit",
+    "file": "Components/Button_Exit.png",
+    "width": 1787,
+    "height": 880,
+    "bounds": [
+      98,
+      145,
+      1681,
+      737
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Button_Fullscreen",
+    "file": "Components/Button_Fullscreen.png",
+    "width": 1263,
+    "height": 1246,
+    "bounds": [
+      177,
+      172,
+      1072,
+      1082
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Button_Settings",
+    "file": "Components/Button_Settings.png",
+    "width": 2172,
+    "height": 724,
+    "bounds": [
+      54,
+      134,
+      2121,
+      588
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Button_Sound",
+    "file": "Components/Button_Sound.png",
+    "width": 1263,
+    "height": 1246,
+    "bounds": [
+      178,
+      173,
+      1070,
+      1081
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Button_Start",
+    "file": "Components/Button_Start.png",
+    "width": 2172,
+    "height": 724,
+    "bounds": [
+      40,
+      78,
+      2117,
+      617
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Hero_Knot",
+    "file": "Components/Hero_Knot.png",
+    "width": 1082,
+    "height": 1454,
+    "bounds": [
+      93,
+      12,
+      985,
+      1437
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Panel_Menu",
+    "file": "Components/Panel_Menu.png",
+    "width": 1217,
+    "height": 1293,
+    "bounds": [
+      24,
+      22,
+      1179,
+      1262
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Plate_Primary",
+    "file": "Components/Plate_Primary.png",
+    "width": 2172,
+    "height": 724,
+    "bounds": [
+      38,
+      74,
+      2118,
+      616
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Plate_Secondary",
+    "file": "Components/Plate_Secondary.png",
+    "width": 2172,
+    "height": 724,
+    "bounds": [
+      56,
+      138,
+      2124,
+      590
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Stage_ArchFan",
+    "file": "Components/Stage_ArchFan.png",
+    "width": 1182,
+    "height": 1330,
+    "bounds": [
+      18,
+      29,
+      1162,
+      1297
+    ],
+    "alpha": true
+  },
+  {
+    "name": "Title_Wordmark",
+    "file": "Components/Title_Wordmark.png",
+    "width": 2172,
+    "height": 724,
+    "bounds": [
+      38,
+      20,
+      2151,
+      709
+    ],
+    "alpha": true
+  }
+]

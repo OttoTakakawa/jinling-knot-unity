@@ -1,0 +1,8 @@
+{
+  "assets/routes/maincurve.json": "ff217dda24121084657a668234eaa892629fc07e37dd7a323c12a2be09250e81",
+  "assets/routes/authored_beats.json": "abe17396f05628376b83cae56c18627ee2fad23c064a10ba9209361f468e8efe",
+  "assets/routes/knot_pull.rgba32f": "2d1335cf5cca84fcfef159a7f9586eb443015a62f17e86383b01dfce839a7fbb",
+  "assets/audio/authored_weave.wav": "f84201ea4c5f700bb7c3594bbbe5fe8d5c2b6e238c9ca00517bfd3f7f82577dd",
+  "scripts/main.gd": "e7a45f0908110e4c931674e84b4f05e0de2fb67e97945d0b56999d1fa8349f9a",
+  "scripts/qinhuai_city.gd": "fcf7627241214e864a918a21cc53dc5b35f6ebf2465b461a42265e50236e4283"
+}
