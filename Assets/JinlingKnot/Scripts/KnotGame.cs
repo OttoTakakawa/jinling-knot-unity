@@ -22,11 +22,24 @@ namespace JinlingKnot
         public int Score {get;private set;}
         public string Status {get;private set;} = "一线九穿 · 秦淮入画";
         public bool Demo {get;private set;}
+        public bool AutoPlayEnabled {get;private set;}
+        public bool UsedAutoPlay {get;private set;}
+        public void ToggleAutoPlay()
+        {
+            if (State != RunState.Ready && State != RunState.Playing && State != RunState.Paused) return;
+            AutoPlayEnabled = !(State == RunState.Ready ? AutoPlayEnabled : Demo); Demo = AutoPlayEnabled;
+            if (State != RunState.Ready && Demo) UsedAutoPlay = true;
+        }
+        public void MouseWeave(float at)
+        {
+            int i=NextCrossing;if(i>=0)Weave(Route.data.crossings[i].side,at);
+        }
         public bool Sounds {get;private set;}=true;
         public float Presentation {get;private set;}
         public string Feedback {get;private set;}="";
         public float FeedbackOpacity => Mathf.Clamp01(1-hitAge/.55f);
         public int NextCrossing { get { for(int i=0;i<passed.Length;i++)if(!passed[i]&&!Route.data.crossings[i].automatic)return i; return -1; } }
+        public int NextOptional { get { for(int i=0;i<optional.Length;i++)if(!optional[i]&&Route.data.optionalEvents[i].time>=RunTime-.3f)return i;return -1; } }
         bool[] passed, optional;
         bool bendArmed;
         int weaveArmed=-1;
@@ -37,7 +50,7 @@ namespace JinlingKnot
         Transform[] optionalRings;
         GameObject[] guides;
         float[] guideDs;
-        Material ropeMaterial;
+        Material ropeMaterial, optionalMarkerMaterial, guideMaterial;
         RopeMesh rope;
         ThreadHeadVFX headVfx;
         Vector3 heading, focus, revealOrigin, revealFocus;
@@ -95,20 +108,43 @@ namespace JinlingKnot
             rope=new GameObject("Permanent rope").AddComponent<RopeMesh>();rope.transform.SetParent(transform,false);rope.Initialize(Route,ropeMaterial);
             hitRing=Ring("Touch pulse",.4f,Flat(gold,.7f));hitRing.gameObject.SetActive(false);
             bendRing=Ring("Next bend",.48f,Flat(gold,.4f));
+            BuildRouteMarkers();
+            city.gameObject.AddComponent<RiverContactEffects>();
+            headVfx=new GameObject("Thread head effects").AddComponent<ThreadHeadVFX>();headVfx.Initialize(this,player,cam);
+            music=gameObject.AddComponent<AudioSource>();music.clip=Resources.Load<AudioClip>("AuthoredWeave");music.volume=.7f;music.playOnAwake=false;
+            effects=gameObject.AddComponent<AudioSource>();effects.playOnAwake=false;effects.volume=.22f;
+        }
+        public int Level { get; private set; } = 1;
+        public string SaveKey => Level == 2 ? "Qinhuai02" : "Qinhuai01";
+        void BuildRouteMarkers()
+        {
             optionalRings=new Transform[optional.Length];
-            var optionalMat=Flat(jade,.5f);
+            if (!optionalMarkerMaterial) optionalMarkerMaterial=Flat(jade,.5f);
+            var optionalMat=optionalMarkerMaterial;
             for(int i=0;i<optional.Length;i++){optionalRings[i]=Ring("Optional touch "+i,.3f,optionalMat);optionalRings[i].position=Route.Position(Route.data.optionalEvents[i].distance)+Vector3.up*.21f;}
-            int count=Mathf.CeilToInt(Route.data.wrapStart/.72f);guides=new GameObject[count];guideDs=new float[count];var guideMat=Flat(new Color(.55f,.70f,.66f),.3f);
+            int count=Mathf.CeilToInt(Route.data.wrapStart/.72f);guides=new GameObject[count];guideDs=new float[count];if (!guideMaterial) guideMaterial=Flat(new Color(.55f,.70f,.66f),.3f);var guideMat=guideMaterial;
             for(int i=0;i<count;i++)
             {
                 float d=i*.72f;guideDs[i]=d;
                 var a=Route.Position(d)+Vector3.up*.15f;var b=Route.Position(Mathf.Min(d+.36f,Route.data.wrapStart))+Vector3.up*.15f;
                 var o=new GameObject("Dashed guide "+i);o.layer=30;o.transform.SetParent(transform,false);var lr=o.AddComponent<LineRenderer>();lr.sharedMaterial=guideMat;lr.positionCount=2;lr.SetPosition(0,a);lr.SetPosition(1,b);lr.widthMultiplier=.045f;lr.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;guides[i]=o;
             }
-            city.gameObject.AddComponent<RiverContactEffects>();
-            headVfx=new GameObject("Thread head effects").AddComponent<ThreadHeadVFX>();headVfx.Initialize(this,player,cam);
-            music=gameObject.AddComponent<AudioSource>();music.clip=Resources.Load<AudioClip>("AuthoredWeave");music.volume=.7f;music.playOnAwake=false;
-            effects=gameObject.AddComponent<AudioSource>();effects.playOnAwake=false;effects.volume=.22f;
+        }
+        public void SelectLevel(int level)
+        {
+            if (level == Level) return;
+            if (level != 1 && level != 2) throw new ArgumentOutOfRangeException(nameof(level));
+            Level = level;
+            Route = new KnotRoute(level == 2 ? "Route02" : "Route");
+            foreach (var marker in optionalRings) { marker.gameObject.SetActive(false); Destroy(marker.gameObject); }
+            foreach (var guide in guides) { guide.SetActive(false); Destroy(guide); }
+            rope.gameObject.SetActive(false); Destroy(rope.gameObject);
+            passed = new bool[Route.data.crossings.Length]; optional = new bool[Route.data.optionalEvents.Length];
+            rope = new GameObject("Permanent rope").AddComponent<RopeMesh>(); rope.transform.SetParent(transform,false); rope.Initialize(Route,ropeMaterial);
+            BuildRouteMarkers();
+            foreach (var tone in tones.Values) Destroy(tone); tones.Clear();
+            music.loop = level == 2;
+            ResetGame();
         }
         public void ResetGame()
         {
@@ -126,11 +162,11 @@ namespace JinlingKnot
         {
             transitionLocked=locked;
             if(locked){if(State==RunState.Playing)music.Pause();}
-            else if(State==RunState.Playing){dspOrigin=AudioSettings.dspTime-RunTime;music.time=Mathf.Min(RunTime,music.clip.length-.01f);music.Play();}
+            else if(State==RunState.Playing){dspOrigin=AudioSettings.dspTime-RunTime;music.time=music.loop?RunTime%music.clip.length:Mathf.Min(RunTime,music.clip.length-.01f);music.Play();}
         }
         public void StartGame(bool demo)
         {
-            ResetGame();Demo=demo;State=RunState.Playing;Status=demo?"循音观织 · 自动演示":"跟随拨弦 · 到拍续弯";
+            ResetGame();Demo=demo||AutoPlayEnabled;UsedAutoPlay=Demo;State=RunState.Playing;Status=Demo?"循音观织 · 自动演示":"跟随拨弦 · 到拍续弯";
             dspOrigin=AudioSettings.dspTime+.15;music.time=0;if(!transitionLocked)music.PlayScheduled(dspOrigin);
         }
         public void ToggleSound(){Sounds=!Sounds;music.mute=effects.mute=!Sounds;}
@@ -199,18 +235,20 @@ namespace JinlingKnot
         float InputTime => Mathf.Max(RunTime,(float)(AudioSettings.dspTime-dspOrigin));
         void Update()
         {
+            // A script reload can invalidate the route before the editor exits Play.
+            if (Route == null) return;
             if(transitionLocked)return;
             float dt=Time.deltaTime;
             if(!capture)
             {
                 if(Input.GetKeyDown(KeyCode.R)){GetComponent<KnotUI>().Transition(()=>StartGame(false));return;}
-                if(Input.GetKeyDown(KeyCode.D)){GetComponent<KnotUI>().Transition(()=>StartGame(true));return;}
+                if(Input.GetKeyDown(KeyCode.D)){ToggleAutoPlay();return;}
                 if(Input.GetKeyDown(KeyCode.Escape)){GetComponent<KnotUI>().Escape();return;}
                 if(State==RunState.Playing&&!Demo)
                 {
                     bool ui=EventSystem.current&&EventSystem.current.IsPointerOverGameObject();
                     if((Input.GetMouseButtonDown(0)&&!ui)||Input.GetKeyDown(KeyCode.Return)||Input.GetKeyDown(KeyCode.LeftArrow)||Input.GetKeyDown(KeyCode.RightArrow))Tap(InputTime);
-                    if(Input.GetMouseButtonDown(1)&&!ui){int i=NextCrossing;if(i>=0)Weave(Route.data.crossings[i].side,InputTime);}
+                    if(Input.GetMouseButtonDown(1)&&!ui)MouseWeave(InputTime);
                     if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.W)||Input.GetKeyDown(KeyCode.UpArrow))Weave(1,InputTime);
                     if(Input.GetKeyDown(KeyCode.S)||Input.GetKeyDown(KeyCode.DownArrow))Weave(-1,InputTime);
                 }

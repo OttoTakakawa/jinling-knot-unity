@@ -5,6 +5,7 @@ namespace JinlingKnot
 {
     public sealed class LevelSelection : MonoBehaviour
     {
+        KnotGame currentGame;
         Transform layout;Font font;Sprite plate,primary;Text record;
         public Button enter,demo,back;
         readonly Color ink=new Color(.12f,.22f,.17f),muted=new Color(.36f,.46f,.37f);
@@ -29,6 +30,7 @@ namespace JinlingKnot
         }
         public void Initialize(GameObject menu,GameObject hud,KnotUI ui,KnotGame game)
         {
+            currentGame=game;
             var canvas=gameObject.AddComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceOverlay;canvas.sortingOrder=25;
             var scaler=gameObject.AddComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1672,941);scaler.screenMatchMode=CanvasScaler.ScreenMatchMode.Expand;gameObject.AddComponent<GraphicRaycaster>();
             var area=new GameObject("Level layout",typeof(RectTransform));area.transform.SetParent(transform,false);var rect=area.GetComponent<RectTransform>();rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(.5f,.5f);rect.sizeDelta=new Vector2(1672,941);layout=area.transform;
@@ -43,17 +45,18 @@ namespace JinlingKnot
             for(int i=0;i<8;i++){
                 float x=130+(i%4)*362,y=218+(i/4)*285;
                 var tile=Art("Knot slot "+(i+1),plate,x,y,324,252,true);
-                tile.color=i==0?Color.white:new Color(.82f,.85f,.76f,1);
-                if(i==0){
-                    var icon=new GameObject("Actual knot silhouette",typeof(RectTransform),typeof(KnotSilhouette));icon.transform.SetParent(tile.transform,false);
+                tile.color=(i==0||i==1)?Color.white:new Color(.82f,.85f,.76f,1);
+                if(i==0||i==1){
+                    int level=i==1?2:1;
+                    var icon=new GameObject("Actual knot silhouette",typeof(RectTransform),typeof(CanvasRenderer),typeof(KnotSilhouette));icon.transform.SetParent(tile.transform,false);
                     var ir=icon.GetComponent<RectTransform>();ir.anchorMin=ir.anchorMax=ir.pivot=new Vector2(.5f,.5f);ir.anchoredPosition=new Vector2(162,-110);ir.sizeDelta=new Vector2(242,188);
                     // The tile uses a top-left pivot; center anchoring is relative to its rectangle.
                     ir.anchoredPosition=new Vector2(0,16);
-                    var shape=icon.GetComponent<KnotSilhouette>();shape.color=ink;shape.raycastTarget=false;shape.SetRoute(game.Route);
-                    var title=Label("01  秦淮初织",26,x+20,y+200,284,40,ink);title.alignment=TextAnchor.MiddleCenter;
+                    var shape=icon.GetComponent<KnotSilhouette>();shape.color=ink;shape.raycastTarget=false;shape.SetRoute(new KnotRoute(level==2?"Route02":"Route"));
+                    var title=Label(level==2?"02  单线回环":"01  秦淮初织",26,x+20,y+200,284,40,ink);title.alignment=TextAnchor.MiddleCenter;
                     title.transform.SetParent(tile.transform,true);
                     var button=tile.gameObject.AddComponent<Button>();tile.raycastTarget=true;button.targetGraphic=tile;
-                    button.onClick.AddListener(()=>ui.Transition(()=>{ui.ShowLevels(false);game.StartGame(false);}));tile.gameObject.AddComponent<ButtonMotion>();enter=button;
+                    button.onClick.AddListener(()=>ui.Transition(()=>{game.SelectLevel(level);ui.ShowLevels(false);game.StartGame(false);}));tile.gameObject.AddComponent<ButtonMotion>();if(level==1)enter=button;
                 }else{
                     var lockLabel=Label("—",54,x+20,y+65,284,70,muted);lockLabel.alignment=TextAnchor.MiddleCenter;
                     var title=Label("尚未收录",25,x+20,y+200,284,40,muted);title.alignment=TextAnchor.MiddleCenter;
@@ -61,8 +64,9 @@ namespace JinlingKnot
             }
             record=Label("",23,135,820,970,48,ink);
             demo=Action("观织演示",1190,810,325,65,false,()=>ui.Transition(()=>{ui.ShowLevels(false);game.StartGame(true);}));
+            ui.MakeAutoButton(demo,font);
             RefreshRecord();
         }
-        public void RefreshRecord(){if(record)record.text=PlayerPrefs.GetInt("Qinhuai01Complete",0)==1?"已完成   ·   最佳 "+PlayerPrefs.GetInt("Qinhuai01Best",0)+" 分":"尚未完成   ·   完成后记录最佳成绩";}
+        public void RefreshRecord(){if(record)record.text=PlayerPrefs.GetInt(currentGame.SaveKey+"Complete",0)==1?"已完成   ·   最佳 "+PlayerPrefs.GetInt(currentGame.SaveKey+"Best",0)+" 分":"尚未完成   ·   完成后记录最佳成绩";}
     }
 }

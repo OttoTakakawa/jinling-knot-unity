@@ -36,6 +36,20 @@ namespace JinlingKnot
             var hint=new GameObject("Ready hint",typeof(RectTransform),typeof(Text));hint.transform.SetParent(root.transform,false);var hr=hint.GetComponent<RectTransform>();hr.sizeDelta=new Vector2(700,70);hr.anchoredPosition=new Vector2(0,-165);var ht=hint.GetComponent<Text>();ht.font=font;ht.fontSize=30;ht.text="准备织结 · 跟随节拍";ht.alignment=TextAnchor.MiddleCenter;ht.color=new Color(1,.95f,.81f);
             root.SetActive(false);
         }
+        readonly System.Collections.Generic.List<AutoPlayIcon> autoIcons = new System.Collections.Generic.List<AutoPlayIcon>();
+        public void MakeAutoButton(Button button, Font font)
+        {
+            // The original menu demo sprite contains baked-in lettering.
+            button.image.sprite=hud.GetComponentInChildren<Button>(true).image.sprite;
+            button.image.type=Image.Type.Sliced;
+            Bind(button,()=>{if(!IsTransitioning)game.ToggleAutoPlay();});
+            autoIcons.Add(AutoPlayIcon.Attach(button,font));
+            var canvas=button.GetComponentInParent<Canvas>();
+            button.transform.SetParent(canvas.transform,false);
+            var rect=button.GetComponent<RectTransform>();
+            rect.anchorMin=rect.anchorMax=rect.pivot=new Vector2(1,0);
+            rect.anchoredPosition=new Vector2(-32,32);rect.sizeDelta=new Vector2(76,76);
+        }
         LevelSelection levels;bool levelOpen,recorded;
         public void ShowLevels(bool show){levelOpen=show;if(levels)levels.RefreshRecord();}
         public void Escape(){if(IsTransitioning)return;Transition(()=>{if(levelOpen)ShowLevels(false);else if(menuActions.settingsPanel.activeSelf)menuActions.settingsPanel.SetActive(false);else game.Pause();},false);}
@@ -101,7 +115,7 @@ namespace JinlingKnot
             menu=Spawn(game.menuPrefab);hud=Spawn(game.hudPrefab);paused=Spawn(game.pausePrefab);completed=Spawn(game.completePrefab);retry=Spawn(game.retryPrefab);
             menuActions=menu.GetComponent<MenuInteractions>();
             menuActions.onStart.AddListener(()=>Transition(()=>ShowLevels(true),false));
-            menuActions.onDemo.AddListener(()=>Transition(()=>game.StartGame(true)));
+
             menuActions.onExit.AddListener(()=>Transition(()=>Application.Quit()));
             BindModal(paused,()=>game.Pause(),false);BindModal(completed,()=>game.StartGame(false));BindModal(retry,()=>game.StartGame(false));
             Bind(hud.GetComponentInChildren<Button>(true),()=>Transition(()=>game.Pause(),false));
@@ -111,6 +125,13 @@ namespace JinlingKnot
             cueRoot=cue.transform.parent.Find("Plate_Primary").gameObject;
             progressFill=hud.GetComponentsInChildren<RectTransform>(true).First(r=>r.name=="Progress fill");
             feedback=Instantiate(controls,controls.transform.parent);feedback.name="Live feedback";feedback.fontSize=29;feedback.color=new Color(1,.94f,.74f);feedback.rectTransform.anchoredPosition=new Vector2(342,-693);feedback.rectTransform.sizeDelta=new Vector2(988,52);
+            foreach(var graphic in hud.GetComponentsInChildren<Graphic>(true))
+                graphic.raycastTarget=graphic.GetComponent<Button>()!=null;
+            MakeAutoButton(menuActions.demo,controls.font);
+            menuActions.settings.GetComponent<RectTransform>().anchoredPosition+=new Vector2(0,100);
+            var pauseButton=hud.GetComponentInChildren<Button>(true);
+            var autoButton=Instantiate(pauseButton,pauseButton.transform.parent);autoButton.name="Toggle auto play";
+            MakeAutoButton(autoButton,controls.font);
             CreateCountdown(controls.font);
             levels=new GameObject("Level selection",typeof(RectTransform)).AddComponent<LevelSelection>();levels.Initialize(menu,hud,this,game);
             foreach(var root in new[]{menu,hud,paused,completed,retry})foreach(var button in root.GetComponentsInChildren<Button>(true))if(!button.GetComponent<ButtonMotion>())button.gameObject.AddComponent<ButtonMotion>();
@@ -120,20 +141,29 @@ namespace JinlingKnot
         void Update(){if(game!=null)Synchronize();}
         void Synchronize()
         {
+            if (game.Route == null) return;
+            foreach(var icon in autoIcons)icon.SetActive(game.State==RunState.Ready?game.AutoPlayEnabled:game.Demo);
             bool ready=game.State==RunState.Ready;
             menu.SetActive(ready&&!levelOpen);levels.gameObject.SetActive(ready&&levelOpen);hud.SetActive(game.State==RunState.Playing||game.State==RunState.Revealing||game.State==RunState.Complete&&game.Presentation<11);
             paused.SetActive(game.State==RunState.Paused);retry.SetActive(game.State==RunState.Failed);completed.SetActive(game.State==RunState.Complete&&game.Presentation>=11);
             if(!ready)menuActions.settingsPanel.SetActive(false);
             if(game.State==RunState.Playing)recorded=false;
-            if(game.State==RunState.Complete&&!game.Demo&&!recorded){recorded=true;PlayerPrefs.SetInt("Qinhuai01Complete",1);PlayerPrefs.SetInt("Qinhuai01Best",Mathf.Max(game.Score,PlayerPrefs.GetInt("Qinhuai01Best",0)));PlayerPrefs.Save();}
+            if(game.State==RunState.Complete&&!game.UsedAutoPlay&&!recorded){recorded=true;PlayerPrefs.SetInt(game.SaveKey+"Complete",1);PlayerPrefs.SetInt(game.SaveKey+"Best",Mathf.Max(game.Score,PlayerPrefs.GetInt(game.SaveKey+"Best",0)));PlayerPrefs.Save();}
             score.text=game.Score.ToString("00000")+" 分";
             runStatus.text=game.IsPanorama?"一线成结 · 缓缓收拢":game.Demo?"循音观织 · 自动演示":"织结中 · 循音续弯";
             counters.text=$"续弯 {game.Bends:00} / {game.Route.data.turns.Length:00}     穿织 {game.CrossingsPassed:00} / {game.Route.data.crossings.Length:00}     轻点 {game.OptionalHits:00}";
-            controls.text=game.IsPanorama?"秦淮入画 · 一线盘长":game.Demo?"正在自动演示    ·    Esc 暂停    ·    R 手动重开":"左键 / Enter 续弯    ·    ↑ ↓ 手动穿线    ·    右键自动穿织";
+            controls.text=game.IsPanorama?"秦淮入画 · 一线盘长":game.Demo?"自动播放中    ·    点击双箭头图标接管":"左键：续弯 / 轻点    ·    右键：自动判断上下穿";
             progressFill.sizeDelta=new Vector2(864*Mathf.Clamp01(game.Progress/game.Route.Total),10);
-            int i=game.NextCrossing;bool approaching=game.State==RunState.Playing&&i>=0&&game.Route.weaveTimes[i]-game.RunTime<2;
+            float nextTime=float.PositiveInfinity;string nextAction="";
+            int i=game.NextCrossing;
+            if(i>=0){nextTime=game.Route.weaveTimes[i];nextAction="右键 · "+(game.Route.data.crossings[i].side>0?"上穿":"下穿");}
+            if(game.Bends<game.Route.bendTimes.Length && game.Route.bendTimes[game.Bends]<nextTime){nextTime=game.Route.bendTimes[game.Bends];nextAction="左键 · 续弯";}
+            int tap=game.NextOptional;
+            if(tap>=0&&game.Route.data.optionalEvents[tap].time<nextTime){nextTime=game.Route.data.optionalEvents[tap].time;nextAction="左键 · 轻点";}
+            float remaining=nextTime-game.RunTime;
+            bool approaching=game.State==RunState.Playing&&remaining<2.5f&&remaining>=-.3f;
             cueRoot.SetActive(approaching);cue.gameObject.SetActive(approaching);
-            if(approaching)cue.text=(game.Route.data.crossings[i].side>0?"↑ 上穿":"↓ 下穿")+(Mathf.Abs(game.Route.weaveTimes[i]-game.RunTime)<=.3f?" · 合拍":" · 前方");
+            if(approaching)cue.text=nextAction+(Mathf.Abs(remaining)<=.3f?" · 现在":" · "+Mathf.Max(0,remaining).ToString("0.0")+" 秒");
             feedback.text=game.State==RunState.Playing?game.Feedback:"";var c=feedback.color;c.a=game.FeedbackOpacity;feedback.color=c;
             if(retry.activeSelf){Label(retry,"Description").text=game.Status;SetResults(retry);}
             if(completed.activeSelf)SetResults(completed);
@@ -156,7 +186,7 @@ namespace JinlingKnot
             menuActions.settings.onClick.Invoke();yield return new WaitUntil(()=>!IsTransitioning);yield return Snap(directory,"Settings.png");
             bool settingsOK=menuActions.settingsPanel.activeSelf;
             menuActions.closeSettings.onClick.Invoke();yield return new WaitUntil(()=>!IsTransitioning);
-            menuActions.onStart.Invoke();menuActions.onDemo.Invoke();
+            menuActions.onStart.Invoke();menuActions.demo.onClick.Invoke();
             yield return new WaitForSecondsRealtime(.06f);
             bool transitionOK=IsTransitioning&&blackout.alpha==0&&game.State==RunState.Ready;
             yield return Snap(directory,"Transition.png");
@@ -184,7 +214,8 @@ namespace JinlingKnot
             bool failOK=game.State==RunState.Failed&&retry.activeSelf;
             retry.GetComponentsInChildren<Button>(true)[0].onClick.Invoke();yield return new WaitUntil(()=>!IsTransitioning);bool retryOK=game.State==RunState.Playing;
             game.Pause();paused.GetComponentsInChildren<Button>(true)[1].onClick.Invoke();yield return new WaitUntil(()=>!IsTransitioning);bool menuOK=game.State==RunState.Ready;
-            menuActions.onDemo.Invoke();yield return new WaitUntil(()=>!IsTransitioning);bool demoOK=game.State==RunState.Playing&&game.Demo;
+            menuActions.demo.onClick.Invoke();bool demoOK=game.AutoPlayEnabled;
+            Transition(()=>game.StartGame(false));yield return new WaitUntil(()=>!IsTransitioning);demoOK=demoOK&&game.State==RunState.Playing&&game.Demo;
             bool ok=transitionOK&&settingsOK&&startOK&&pauseOK&&resumeOK&&failOK&&retryOK&&menuOK&&demoOK;
             File.WriteAllText(Path.Combine(directory,"ui-checks.json"),"{\"passed\":"+ok.ToString().ToLower()+",\"settings\":"+settingsOK.ToString().ToLower()+",\"start\":"+startOK.ToString().ToLower()+",\"pause\":"+pauseOK.ToString().ToLower()+",\"resume\":"+resumeOK.ToString().ToLower()+",\"failure\":"+failOK.ToString().ToLower()+",\"retry\":"+retryOK.ToString().ToLower()+",\"menu\":"+menuOK.ToString().ToLower()+",\"demo\":"+demoOK.ToString().ToLower()+"}");
             if(!ok){Debug.LogError("UI FLOW CHECK FAILED");Application.Quit(1);}

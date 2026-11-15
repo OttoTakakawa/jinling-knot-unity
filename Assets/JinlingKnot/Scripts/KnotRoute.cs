@@ -23,13 +23,15 @@ namespace JinlingKnot
         public readonly float[] bendTimes, weaveTimes;
         readonly float[] pull;
         public float Total => data.distances[data.distances.Length - 1];
-        public KnotRoute()
+        public KnotRoute(string resource = "Route")
         {
-            data = JsonUtility.FromJson<RouteData>(Resources.Load<TextAsset>("Route").text);
-            var bytes = Resources.Load<TextAsset>("KnotPull").bytes;
+            data = JsonUtility.FromJson<RouteData>(Resources.Load<TextAsset>(resource).text);
+            if (data.pullFrames > 0) {
+            var bytes = Resources.Load<TextAsset>(resource == "Route02" ? "KnotPull02" : "KnotPull").bytes;
             if (bytes.Length != data.pullFrames * data.pullNodes * 16) throw new InvalidOperationException("Incomplete knot pull cache");
             pull = new float[bytes.Length / 4];
             Buffer.BlockCopy(bytes, 0, pull, 0, bytes.Length);
+            }
             bendTimes = new float[data.turns.Length]; weaveTimes = new float[data.crossings.Length];
             foreach (var e in data.events)
                 if (e.action == "turn") bendTimes[e.index] = e.time; else weaveTimes[e.index] = e.time;
@@ -52,6 +54,7 @@ namespace JinlingKnot
         }
         public Vector3 Pull(float d, float amount)
         {
+            if (pull == null) return Position(d);
             int i = Index(data.pullDistances, d);
             float u = Mathf.InverseLerp(data.pullDistances[i], data.pullDistances[i + 1], d);
             float frame = Mathf.Clamp01(amount) * (data.pullFrames - 1);

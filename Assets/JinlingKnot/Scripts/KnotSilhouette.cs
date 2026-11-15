@@ -3,6 +3,7 @@ using UnityEngine.UI;
 namespace JinlingKnot
 {
     // Vector silhouette from the actual final knot, not unrelated decorative art.
+    [RequireComponent(typeof(CanvasRenderer))]
     public sealed class KnotSilhouette : MaskableGraphic
     {
         Vector2[] points;
